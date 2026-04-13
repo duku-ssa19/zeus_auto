@@ -1,71 +1,47 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zeus Auto - Карта лояльности</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body {
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f2f5;
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        #qrcode {
-            margin-top: 15px;
-        }
-        h2 { color: #333; margin-bottom: 5px; }
-        p { color: #666; font-size: 14px; }
+        body { font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #eee; }
+        .card { background: white; border-radius: 20px; padding: 30px; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        #id_display { font-weight: bold; color: #0088cc; margin-top: 10px; }
     </style>
 </head>
 <body>
-
     <div class="card">
-        <h2>Zeus Auto</h2>
-        <p>Покажите QR-код администратору</p>
+        <h2>ZEUS AUTO</h2>
         <div id="qrcode"></div>
+        <div id="id_display">Загрузка ID...</div>
     </div>
 
     <script>
-        // 1. Инициализация Telegram
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем приложение
+        tg.expand();
 
-        // 2. Получаем ID (если открыто не в TG, будет 12345 для теста)
-        const userId = (tg.initDataUnsafe && tg.initDataUnsafe.user) 
-                       ? tg.initDataUnsafe.user.id 
-                       : "797189199"; 
+        // Ждем небольшую паузу, чтобы Telegram успел передать данные
+        setTimeout(function() {
+            let userId = "797189199"; // Ваш ID как запасной для теста
 
-        // 3. Ваша ссылка на Google Script
-        const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
-        
-        // 4. Формируем финальную ссылку
-        const finalUrl = `${scriptUrl}?id=${userId}&pass=My_Secret_123`;
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                userId = tg.initDataUnsafe.user.id;
+            }
 
-        // 5. Генерируем QR-код
-        new QRCode(document.getElementById("qrcode"), {
-            text: finalUrl,
-            width: 200,
-            height: 200,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
-        });
-        
-        console.log("QR сгенерирован для ID:", userId);
+            document.getElementById('id_display').innerText = "Ваш ID: " + userId;
+
+            const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
+            const finalUrl = scriptUrl + "?id=" + userId + "&pass=My_Secret_123";
+
+            // Очищаем место под QR и создаем новый
+            document.getElementById("qrcode").innerHTML = "";
+            new QRCode(document.getElementById("qrcode"), {
+                text: finalUrl,
+                width: 200,
+                height: 200
+            });
+        }, 500); 
     </script>
 </body>
 </html>
