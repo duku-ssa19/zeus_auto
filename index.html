@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <style>
         :root {
-            --bg: #0b0b0b;
-            --card: #1c1c1e;
-            --accent: #b7ff32;
+            --bg: #050505;
+            --card: #121214;
+            --accent: #2c69ff; /* Глубокий синий */
             --text: #ffffff;
         }
 
@@ -22,10 +22,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
-        /* Шапка с лого */
         .header {
             display: flex;
             justify-content: center;
@@ -41,8 +40,8 @@
         }
 
         .logo-img {
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             background-image: url('logo.png');
             background-size: cover;
@@ -51,41 +50,35 @@
         .logo-text {
             font-weight: 900;
             font-size: 24px;
-            letter-spacing: -1px;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
         }
 
         .logo-text span { color: var(--accent); }
 
-        /* Карточка */
         .card {
             display: flex;
             background: var(--card);
             width: 100%;
             max-width: 340px;
-            border-radius: 30px;
+            border-radius: 35px;
             overflow: hidden;
-            height: 160px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            height: 170px;
+            box-shadow: 0 15px 35px rgba(44, 105, 255, 0.15);
         }
 
         .card-left {
             background: var(--accent);
-            width: 160px;
+            width: 170px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        /* Стилизация QR */
         #qrcode {
-            padding: 0;
             display: flex;
-        }
-
-        #qrcode img {
-            width: 125px !important;
-            height: 125px !important;
-            mix-blend-mode: multiply; /* Магия для вписывания в фон */
+            justify-content: center;
+            align-items: center;
         }
 
         .card-right {
@@ -96,15 +89,15 @@
             justify-content: center;
         }
 
-        .v-num { font-size: 64px; font-weight: 800; line-height: 1; }
-        .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; }
+        .v-num { font-size: 68px; font-weight: 800; line-height: 1; }
+        .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; letter-spacing: 1px; }
 
-        .info-link {
-            color: #ff4500;
+        .info-btn {
+            color: var(--accent);
             font-size: 14px;
-            margin-top: 25px;
+            margin-top: 30px;
             cursor: pointer;
-            text-decoration: none;
+            font-weight: 500;
         }
 
         .btn-scan {
@@ -112,13 +105,14 @@
             margin-top: 35px;
             width: 100%;
             max-width: 340px;
-            padding: 18px;
-            border-radius: 15px;
+            padding: 20px;
+            border-radius: 20px;
             border: none;
-            background: #d34329;
+            background: #e63946; /* Красный для кнопки сканера */
             color: white;
-            font-weight: bold;
-            font-size: 16px;
+            font-weight: 800;
+            font-size: 15px;
+            box-shadow: 0 10px 20px rgba(230, 57, 70, 0.2);
         }
     </style>
 </head>
@@ -141,9 +135,9 @@
         </div>
     </div>
 
-    <div class="info-link" onclick="tg.showAlert('Каждая 4-я мойка: скидка\nКаждая 8-я мойка: подарок')">ⓘ Условия программы</div>
+    <div class="info-btn" onclick="tg.showAlert('📍 Каждая 4-я мойка: скидка\n🎁 Каждая 8-я мойка: подарок!')">ⓘ Условия программы</div>
 
-    <button id="adm" class="btn-scan">СКАНИРОВАТЬ QR КЛИЕНТА</button>
+    <button id="adm" class="btn-scan">СКАНИРОВАТЬ QR</button>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -152,27 +146,44 @@
         const uid = tg.initDataUnsafe?.user?.id || "797189199";
         const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
 
-        // Генерация QR (Графитовый на Салатовом)
-        new QRCode(document.getElementById("qrcode"), {
-            text: `${scriptUrl}?id=${uid}&pass=My_Secret_123`,
-            width: 125,
-            height: 125,
-            colorDark : "#1c1c1e", // Цвет правой части карточки
-            colorLight : "#b7ff32", // Цвет левой части карточки
-            correctLevel : QRCode.CorrectLevel.M
+        // Настройка "гладкого" QR-кода
+        const qrCode = new QRCodeStyling({
+            width: 135,
+            height: 135,
+            type: "svg",
+            data: `${scriptUrl}?id=${uid}&pass=My_Secret_123`,
+            dotsOptions: {
+                color: "#121214", // Цвет точек (в тон правой части)
+                type: "rounded"  // Закругленные точки как у DriveeCon
+            },
+            backgroundOptions: {
+                color: "transparent",
+            },
+            cornersSquareOptions: {
+                type: "extra-rounded", // Скругленные угловые квадраты
+                color: "#121214"
+            },
+            cornersDotOptions: {
+                type: "dot",
+                color: "#121214"
+            }
         });
 
+        qrCode.append(document.getElementById("qrcode"));
+
+        // Получение визитов
         fetch(`${scriptUrl}?action=check&id=${uid}`)
             .then(r => r.json())
             .then(d => { document.getElementById('v').innerText = d.visits || 0; });
 
-        // Кнопка для админов
+        // Админ-панель
         const admins = ["797189199"]; 
         if(admins.includes(String(uid))) {
             const b = document.getElementById('adm');
             b.style.display = 'block';
             b.onclick = () => {
-                tg.showScanQrPopup({text:"Сканирование визита"}, (r) => {
+                tg.showScanQrPopup({text:"Сканирование карты клиента"}, (r) => {
+                    if(!r) return;
                     fetch(r).then(res => res.text()).then(t => { 
                         tg.showAlert(t); 
                         location.reload(); 
