@@ -1,60 +1,59 @@
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-    tg.ready(); // Уведомляем ТГ, что приложение готово
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { --bg: #0b0b0b; --card: #1c1c1e; --accent: #b7ff32; --text: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .header { display: flex; justify-content: space-between; width: 100%; max-width: 340px; margin-bottom: 30px; }
+        .logo { font-weight: 900; font-size: 24px; }
+        .logo span { color: var(--accent); }
+        .card { display: flex; background: var(--card); width: 100%; max-width: 340px; border-radius: 30px; overflow: hidden; height: 160px; }
+        .card-left { background: var(--accent); width: 160px; display: flex; align-items: center; justify-content: center; }
+        .card-right { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #qrcode { background: white; padding: 8px; border-radius: 12px; }
+        .v-num { font-size: 60px; font-weight: 800; line-height: 1; }
+        .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; }
+        .btn-modal { color: #ff4500; margin-top: 20px; cursor: pointer; font-size: 14px; }
+        .admin-btn { display: none; margin-top: 30px; width: 100%; max-width: 340px; padding: 18px; border-radius: 15px; border: none; background: #d34329; color: white; font-weight: bold; }
+        #modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; }
+        .m-cont { background: var(--card); padding: 30px; border-radius: 30px; width: 80%; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header"><div class="logo">ZEUS<span>AUTO</span></div></div>
+    <div class="card">
+        <div class="card-left"><div id="qrcode"></div></div>
+        <div class="card-right"><div class="v-num" id="v">0</div><div class="v-lab">визитов</div></div>
+    </div>
+    <div class="btn-modal" onclick="document.getElementById('modal').style.display='flex'">ⓘ Что такое баллы?</div>
+    <button id="adm" class="admin-btn">СКАНИРОВАТЬ QR</button>
+    <div id="modal" onclick="this.style.display='none'"><div class="m-cont"><h3>Лояльность</h3><p>4-й визит: Скидка<br>8-й визит: Подарок</p></div></div>
 
-    const uid = tg.initDataUnsafe?.user?.id || "797189199";
-    const uName = tg.initDataUnsafe?.user?.first_name || "driver";
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const uid = tg.initDataUnsafe?.user?.id || "797189199";
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
 
-    document.getElementById('u_name').innerText = uName;
+        new QRCode(document.getElementById("qrcode"), { text: `${scriptUrl}?id=${uid}&pass=My_Secret_123`, width: 110, height: 110 });
+        fetch(`${scriptUrl}?action=check&id=${uid}`).then(r => r.json()).then(d => { document.getElementById('v').innerText = d.visits; });
 
-    // Генерируем QR сразу
-    new QRCode(document.getElementById("qrcode"), {
-        text: `${scriptUrl}?id=${uid}&pass=My_Secret_123`,
-        width: 110, height: 110, colorDark: "#000000", colorLight: "#ffffff"
-    });
-
-    // Загружаем количество визитов
-    fetch(`${scriptUrl}?action=check&id=${uid}`)
-        .then(r => r.json())
-        .then(data => { document.getElementById('v_count').innerText = data.visits || 0; });
-
-    // --- ЛОГИКА ДЛЯ КНОПКИ СКАНЕРА ---
-    const admins = ["797189199"]; // Добавьте сюда ID всех админов
-    const adminBtn = document.getElementById('adm_btn');
-
-    if (admins.includes(String(uid))) {
-        adminBtn.style.display = 'block';
-        
-        adminBtn.onclick = function() {
-            // Вызываем родной сканер Telegram
-            tg.showScanQrPopup({ text: "Сканируйте QR-код клиента" }, function(result) {
-                // 'result' — это ссылка из QR-кода клиента
-                if (!result) return false;
-
-                // Показываем индикатор загрузки
-                adminBtn.innerText = "Обработка...";
-                adminBtn.disabled = true;
-
-                // Отправляем запрос на сервер (Google Script)
-                fetch(result)
-                    .then(response => response.text())
-                    .then(text => {
-                        tg.showAlert(text); // Показываем результат (например: "Визит засчитан!")
-                        location.reload(); // Обновляем страницу, чтобы увидеть изменения
-                    })
-                    .catch(err => {
-                        tg.showAlert("Ошибка при отправке данных");
-                    })
-                    .finally(() => {
-                        adminBtn.innerText = "Сканировать QR";
-                        adminBtn.disabled = false;
-                        tg.closeScanQrPopup(); // Закрываем сканер
-                    });
-                
-                return true; 
-            });
-        };
-    }
-</script>
+        const admins = ["797189199"];
+        if(admins.includes(String(uid))) {
+            const b = document.getElementById('adm');
+            b.style.display = 'block';
+            b.onclick = () => {
+                tg.showScanQrPopup({text:"Сканер Zeus Auto"}, (r) => {
+                    if(!r) return;
+                    fetch(r).then(res => res.text()).then(t => { tg.showAlert(t); location.reload(); });
+                    return true;
+                });
+            };
+        }
+    </script>
+</body>
+</html>
