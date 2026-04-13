@@ -3,87 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zeus Auto Card</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --bg: #0b0b0b; --card: #1c1c1e; --accent: #b7ff32; --text: #ffffff; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .header { display: flex; justify-content: space-between; width: 100%; max-width: 340px; margin-bottom: 30px; }
-        .logo { font-weight: 900; font-size: 24px; }
-        .logo span { color: var(--accent); }
-        .card { display: flex; background: var(--card); width: 100%; max-width: 340px; border-radius: 30px; overflow: hidden; height: 160px; }
-        .card-left { background: var(--accent); width: 160px; display: flex; align-items: center; justify-content: center; }
-        .card-right { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #qrcode { background: white; padding: 8px; border-radius: 12px; }
-        .v-num { font-size: 60px; font-weight: 800; line-height: 1; }
-        .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; }
-        .btn-modal { color: #ff4500; margin-top: 20px; cursor: pointer; font-size: 14px; }
-        .admin-btn { display: none; margin-top: 30px; width: 100%; max-width: 340px; padding: 18px; border-radius: 15px; border: none; background: #d34329; color: white; font-weight: bold; }
-        #modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; }
-        .m-cont { background: var(--card); padding: 30px; border-radius: 30px; width: 80%; text-align: center; }
-    
-    .header { 
-        display: flex; 
-        justify-content: space-between; 
-        width: 100%; 
-        max-width: 340px; 
-        margin-bottom: 20px; 
-        align-items: center; 
-    }
-    
-    /* Добавляем стили для иконки рядом с названием */
-    .logo-container {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .logo-img {
-        width: 32px;
-        height: 32px;
-        background-color: transparent;
-        border-radius: 50%;
-    }
-    .logo-text { 
-        font-weight: 900; 
-        font-size: 22px; 
-    }
-    .logo-text span { color: var(--accent); }
+        /* Определение цветовой палитры (переменные) */
+        :root {
+            --bg-color: #0b0b0b;     /* Глубокий черный фон */
+            --card-color: #1c1c1e;   /* Темно-серый для правой части карты */
+            --accent-color: #b7ff32; /* Яркий салатовый (неоновый) */
+            --text-color: #ffffff;   /* Белый текст */
+            --gray-text: #8a8a8e;   /* Серый текст для подписей */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Убираем прокрутку, если контент помещается */
+            overflow: hidden; 
+        }
+
+        /* Шапка приложения (Логотип) */
+        .header {
+            display: flex;
+            justify-content: center; /* Центрируем логотип в шапке */
+            width: 100%;
+            max-width: 340px;
+            margin-bottom: 50px; /* Увеличили отступ, так как убрали заголовок */
+            align-items: center;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-img {
+            width: 38px; /* Немного увеличили иконку */
+            height: 38px;
+            border-radius: 50%;
+            /* Убедитесь, что файл logo.png лежит в той же папке на GitHub */
+            background-image: url('logo.png'); 
+            background-size: cover;
+            background-position: center;
+        }
+
+        .logo-text {
+            font-weight: 900;
+            font-size: 26px; /* Немного увеличили шрифт */
+            letter-spacing: -1px;
+            text-transform: uppercase;
+        }
+
+        .logo-text span {
+            color: var(--accent-color);
+        }
+
+        /* --- Стилизация карты лояльности --- */
+        .loyalty-card {
+            display: flex;
+            background-color: var(--card-color);
+            width: 100%;
+            max-width: 340px;
+            border-radius: 32px; /* Более мягкие закругления */
+            overflow: hidden;
+            height: 160px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6); /* Глубокая тень */
+            margin-bottom: 30px;
+        }
+
+        /* Левая часть карты (Салатовая с QR) */
+        .card-left {
+            background-color: var(--accent-color);
+            width: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        /* Стили для контейнера QR-кода */
+        #qrcode {
+            /* Убираем белый фон, делаем контейнер прозрачным */
+            background: transparent; 
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Управление размером самого изображения QR-кода */
+        #qrcode img {
+            width: 130px !important; /* Увеличили QR, чтобы он лучше читался */
+            height: 130px !important;
+        }
+
+        /* Правая часть карты (Темная со счетчиком) */
+        .card-right {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--card-color);
+        }
+
+        .visits-num {
+            font-size: 72px; /* Очень крупный счетчик */
+            font-weight: 800;
+            color: var(--text-color);
+            line-height: 1;
+        }
+
+        .visits-label {
+            font-size: 11px;
+            color: var(--gray-text);
+            text-transform: uppercase;
+            margin-top: 5px;
+            letter-spacing: 1px;
+        }
+
+        /* Ссылка-подсказка */
+        .help-link {
+            color: #ff4500; /* Оставляем оранжевый цвет */
+            text-decoration: none;
+            font-size: 15px;
+            margin-top: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Кнопка сканирования (Красная) */
+        .scan-btn {
+            margin-top: 40px;
+            width: 100%;
+            max-width: 340px;
+            padding: 20px;
+            border-radius: 18px;
+            border: none;
+            background-color: #d34329; /* Насыщенный красный */
+            color: var(--text-color);
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(211, 67, 41, 0.3);
+            /* Скрыта по умолчанию, показывается только админам */
+            display: none; 
+        }
+
     </style>
 </head>
 <body>
+
     <div class="header">
         <div class="logo-container">
-            <img src="logo.png" class="logo-img" alt="Zeus"> 
+            <div class="logo-img"></div>
             <div class="logo-text">ZEUS<span>AUTO</span></div>
         </div>
     </div>
-    
-    <div class="header"><div class="logo">ZEUS<span>AUTO</span></div></div>
-    <div class="card">
-        <div class="card-left"><div id="qrcode"></div></div>
-        <div class="card-right"><div class="v-num" id="v">0</div><div class="v-lab">визитов</div></div>
+
+    <div class="loyalty-card">
+        <div class="card-left">
+            <div id="qrcode"></div>
+        </div>
+        <div class="card-right">
+            <div class="visits-num" id="visits_count">0</div>
+            <div class="visits-label">визитов</div>
+        </div>
     </div>
-    <div class="btn-modal" onclick="document.getElementById('modal').style.display='flex'">ⓘ Что такое баллы?</div>
-    <button id="adm" class="admin-btn">СКАНИРОВАТЬ QR</button>
-    <div id="modal" onclick="this.style.display='none'"><div class="m-cont"><h3>Лояльность</h3><p>4-й визит: Скидка<br>8-й визит: Подарок</p></div></div>
+
+    <a href="#" class="help-link">
+        <span>ⓘ</span> Условия программы
+    </a>
+
+    <button class="scan-btn" id="admin_scan_btn">СКАНИРОВАТЬ QR КЛИЕНТА</button>
 
     <script>
+        // Инициализация Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand();
-        const uid = tg.initDataUnsafe?.user?.id || "797189199";
-        const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
+        tg.expand(); // Расширяем на весь экран
+        tg.backgroundColor = "#0b0b0b"; // Задаем фон для плавного открытия
 
-        new QRCode(document.getElementById("qrcode"), { text: `${scriptUrl}?id=${uid}&pass=My_Secret_123`, width: 110, height: 110 });
-        fetch(`${scriptUrl}?action=check&id=${uid}`).then(r => r.json()).then(d => { document.getElementById('v').innerText = d.visits; });
+        // Получаем ID пользователя из Telegram
+        // ВНИМАНИЕ: Для теста используется статический ID, замените при деплое
+        const userId = tg.initDataUnsafe?.user?.id || "797189199"; 
+        
+        // URL вашего Google Apps Script (замените на актуальный после деплоя скрипта)
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwYOUR_SCRIPT_ID_HERE/exec"; 
 
-        const admins = ["797189199"];
-        if(admins.includes(String(uid))) {
-            const b = document.getElementById('adm');
-            b.style.display = 'block';
-            b.onclick = () => {
-                tg.showScanQrPopup({text:"Сканер Zeus Auto"}, (r) => {
-                    if(!r) return;
-                    fetch(r).then(res => res.text()).then(t => { tg.showAlert(t); location.reload(); });
+        // --- ГЕНЕРАЦИЯ КРАСИВОГО QR-КОДА ---
+        // Ссылка, которая зашита в QR (Ваша ссылка + ID клиента + пароль админа)
+        const qrData = `${scriptUrl}?id=${userId}&pass=My_Secret_123`;
+
+        // Очищаем контейнер перед генерацией (на случай перезагрузки)
+        document.getElementById("qrcode").innerHTML = "";
+
+        // Генерируем QR-код
+        new QRCode(document.getElementById("qrcode"), {
+            text: qrData,
+            width: 130, // Размер QR-кода
+            height: 130,
+            // ЦВЕТА ДЛЯ КРАСОТЫ:
+            colorDark : "#1c1c1e", // Цвет самих квадратиков (темно-серый, как правая часть карты)
+            colorLight : "#b7ff32", // Фон QR-кода (салатовый, как левая часть карты)
+            correctLevel : QRCode.CorrectLevel.M // Уровень коррекции ошибок
+        });
+
+        // --- ЗАГРУЗКА ДАННЫХ О ВИЗИТАХ ---
+        // Делаем запрос к Google Scripts, чтобы узнать количество визитов
+        fetch(`${scriptUrl}?action=get_visits&id=${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Обновляем счетчик на экране
+                document.getElementById('visits_count').innerText = data.visits || 0;
+            })
+            .catch(error => {
+                console.error("Ошибка при загрузке визитов:", error);
+                // В случае ошибки оставляем 0
+            });
+
+        // --- ЛОГИКА КНОПКИ СКАНЕРА (ТОЛЬКО ДЛЯ АДМИНОВ) ---
+        // Список ID администраторов, которым должна показываться кнопка
+        const adminIds = ["797189199"]; // Добавьте сюда ID других админов через запятую
+
+        if (adminIds.includes(String(userId))) {
+            const scanBtn = document.getElementById('admin_scan_btn');
+            scanBtn.style.display = 'block'; // Показываем кнопку админу
+
+            scanBtn.onclick = function() {
+                // Вызываем встроенный сканер Telegram
+                tg.showScanQrPopup({ text: "Сканируйте QR-код клиента Zeus Auto" }, function(result) {
+                    if (!result) return false; // Если сканирование отменено
+
+                    // URL, полученный из QR-кода клиента, отправляем на сервер для зачисления визита
+                    fetch(result)
+                        .then(response => response.text())
+                        .then(text => {
+                            // Показываем ответ сервера (например, "Визит засчитан!")
+                            tg.showAlert(text); 
+                            // Перезагружаем страницу, чтобы обновить счетчик визитов админа (если он сам клиент)
+                            location.reload(); 
+                        })
+                        .catch(err => {
+                            tg.showAlert("Ошибка при обработке запроса.");
+                        });
+                    
+                    tg.closeScanQrPopup(); // Закрываем сканер
                     return true;
                 });
             };
