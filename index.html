@@ -3,103 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zeus Auto Card</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --bg: #0e0e0e; --card-bg: #1c1c1e; --accent: #87ff00; --text: #ffffff; }
-        body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        
-        /* Стили карточки (как на скрине) */
-        .container { width: 90%; max-width: 350px; display: none; } /* Скрыто до загрузки */
+        body { font-family: sans-serif; background-color: #0e0e0e; color: white; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .loyalty-card { 
-            background: linear-gradient(135deg, #2c2c2e 0%, #1c1c1e 100%);
-            border-radius: 24px; padding: 0; overflow: hidden;
-            display: flex; align-items: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            background: #1c1c1e; border-radius: 24px; display: flex; align-items: center; 
+            width: 320px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        .qr-section { background: var(--accent); padding: 20px; display: flex; justify-content: center; }
-        .info-section { flex-grow: 1; text-align: center; padding: 20px; }
-        .bonus-val { font-size: 48px; font-weight: bold; margin: 0; }
-        .bonus-label { font-size: 12px; color: #8a8a8e; text-transform: uppercase; }
-
-        /* Стили формы регистрации */
-        .form-group { background: var(--card-bg); padding: 20px; border-radius: 20px; width: 100%; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #333; background: #2c2c2e; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; border-radius: 12px; border: none; background: var(--accent); color: black; font-weight: bold; font-size: 16px; cursor: pointer; }
-        
-        .header { text-align: left; width: 100%; margin-bottom: 20px; font-weight: bold; font-size: 24px; color: var(--accent); }
+        .qr-side { background: #87ff00; padding: 20px; }
+        .info-side { flex-grow: 1; text-align: center; }
+        .num { font-size: 40px; font-weight: bold; margin: 0; }
+        .label { font-size: 10px; color: #8a8a8e; text-transform: uppercase; }
     </style>
 </head>
 <body>
-
-    <div id="reg-screen" class="container">
-        <div class="header">ZEUS AUTO</div>
-        <div class="form-group">
-            <p>Регистрация в системе</p>
-            <input type="text" id="reg-name" placeholder="Ваше имя">
-            <input type="text" id="reg-car" placeholder="Марка авто (например: BMW)">
-            <input type="tel" id="reg-phone" placeholder="Номер телефона">
-            <button onclick="register()">Создать карту</button>
-        </div>
-    </div>
-
-    <div id="card-screen" class="container">
-        <div class="header" id="user-greeting">Привет!</div>
+    <div id="app">
         <div class="loyalty-card">
-            <div class="qr-section"><div id="qrcode"></div></div>
-            <div class="info-section">
-                <div class="bonus-val" id="visit-count">0</div>
-                <div class="bonus-label">Визитов</div>
+            <div class="qr-side"><div id="qrcode"></div></div>
+            <div class="info-side">
+                <div class="num" id="v">0</div>
+                <div class="label">Визитов</div>
             </div>
         </div>
-        <p style="text-align:center; color:#8a8a8e; font-size:12px; margin-top:20px;">Покажите QR администратору</p>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand();
-        const userId = tg.initDataUnsafe?.user?.id || "797189199";
-        const userName = tg.initDataUnsafe?.user?.first_name || "";
-        const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
+        const uid = tg.initDataUnsafe?.user?.id || "797189199";
+        const url = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
 
-        // 1. Проверка регистрации при входе
-        async function checkUser() {
-            const response = await fetch(`${scriptUrl}?action=check&id=${userId}`);
-            const data = await response.json();
-            
-            if (data.registered) {
-                showCard(data.visits);
-            } else {
-                document.getElementById('reg-name').value = userName;
-                document.getElementById('reg-screen').style.display = 'block';
-            }
-        }
-
-        // 2. Функция регистрации
-        async function register() {
-            const name = document.getElementById('reg-name').value;
-            const car = document.getElementById('reg-car').value;
-            const phone = document.getElementById('reg-phone').value;
-            
-            if(!name || !car || !phone) return alert("Заполните все поля!");
-
-            await fetch(`${scriptUrl}?action=register&id=${userId}&name=${name}&car=${car}&phone=${phone}`);
-            showCard(0);
-        }
-
-        // 3. Показ карты
-        function showCard(visits) {
-            document.getElementById('reg-screen').style.display = 'none';
-            document.getElementById('card-screen').style.display = 'block';
-            document.getElementById('visit-count').innerText = visits;
-            
-            new QRCode(document.getElementById("qrcode"), {
-                text: `${scriptUrl}?id=${userId}&pass=My_Secret_123`,
-                width: 140, height: 140, colorDark: "#000000", colorLight: "#87ff00"
+        fetch(`${url}?id=${uid}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('v').innerText = data.visits || 0;
+                new QRCode(document.getElementById("qrcode"), {
+                    text: `${url}?id=${uid}&pass=My_Secret_123`,
+                    width: 120, height: 120, colorDark: "#000000", colorLight: "#87ff00"
+                });
             });
-        }
-
-        checkUser();
     </script>
 </body>
 </html>
