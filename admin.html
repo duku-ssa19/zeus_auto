@@ -3,28 +3,35 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сканер</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 40px; }
-        .btn { background: #0088cc; color: white; border: none; padding: 20px; border-radius: 15px; font-size: 18px; width: 100%; }
+        body { font-family: sans-serif; text-align: center; background: #1c1c1c; color: white; padding-top: 50px; }
+        .btn { background: #0088cc; color: white; border: none; padding: 20px 40px; border-radius: 10px; font-size: 20px; width: 80%; }
+        #res { margin-top: 30px; font-size: 22px; color: #4caf50; }
     </style>
 </head>
 <body>
-    <button class="btn" onclick="scan()">📸 ОТКРЫТЬ СКАНЕР</button>
-    <h2 id="res" style="margin-top: 30px;"></h2>
+    <h2>Панель мойки</h2>
+    <button class="btn" onclick="scan()">СКАНИРОВАТЬ QR</button>
+    <div id="res"></div>
+
     <script>
         const tg = window.Telegram.WebApp;
         const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
         const pass = "My_Secret_123";
+
         function scan() {
-            tg.showScanQrPopup({ text: "Сканируй QR клиента" }, (id) => {
-                document.getElementById('res').innerText = "⏳ Ждите...";
-                fetch(`${scriptUrl}?id=${id}&pass=${pass}`)
-                    .then(r => r.text()).then(t => { 
+            tg.showScanQrPopup({ text: "Сканируйте код клиента" }, function(result) {
+                document.getElementById('res').innerText = "⏳ Обработка...";
+                fetch(`${scriptUrl}?id=${result}&pass=${pass}`)
+                    .then(r => r.text())
+                    .then(t => {
                         document.getElementById('res').innerText = t;
                         tg.HapticFeedback.notificationOccurred('success');
-                    });
-                return true; 
+                    })
+                    .catch(() => { document.getElementById('res').innerText = "❌ Ошибка сети"; });
+                return true;
             });
         }
     </script>
