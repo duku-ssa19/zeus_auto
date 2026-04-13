@@ -7,45 +7,46 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-    body { 
-        font-family: -apple-system, sans-serif; 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center; 
-        min-height: 100vh; /* Центрирует по вертикали на весь экран */
-        margin: 0; 
-        background-color: #f5f5f7; 
-    }
-    .card { 
-        background: white; 
-        padding: 30px; 
-        border-radius: 25px; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
-        text-align: center; /* Центрирует текст внутри */
-        width: 280px;
-        display: flex;
-        flex-direction: column;
-        align-items: center; /* Центрирует сам QR внутри карточки */
-    }
-    #qrcode { 
-        margin: 20px 0; 
-        display: block;
-    }
-    #id_display { 
-        font-size: 14px; 
-        color: #0071e3; 
-        font-weight: bold; 
-        background: #eef7ff; 
-        padding: 8px 15px; 
-        border-radius: 12px; 
-    }
-</style>
+        body { 
+            font-family: -apple-system, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            background-color: #f5f5f7; 
+        }
+        .card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            text-align: center; 
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center; 
+        }
+        #qrcode { margin: 20px 0; }
+        h2 { color: #1d1d1f; margin: 0; font-size: 24px; }
+        p { color: #86868b; font-size: 14px; margin-top: 10px; }
+        #id_display { 
+            font-size: 14px; 
+            color: #0071e3; 
+            font-weight: bold; 
+            background: #eef7ff; 
+            padding: 8px 15px; 
+            border-radius: 12px; 
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
 
     <div class="card">
         <h2>ZEUS AUTO</h2>
+        <p>Покажите QR администратору</p>
         <div id="qrcode"></div>
         <div id="id_display">Загрузка ID...</div>
     </div>
@@ -54,27 +55,22 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Функция срабатывает через 0.5 сек после открытия
         setTimeout(function() {
-            let userId = "797189199"; 
+            let userId = (tg.initDataUnsafe && tg.initDataUnsafe.user) 
+                         ? String(tg.initDataUnsafe.user.id) 
+                         : "797189199";
 
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                userId = String(tg.initDataUnsafe.user.id);
-            }
-
-            // Выводим ТОЛЬКО номер ID
             document.getElementById('id_display').innerText = "Ваш ID: " + userId;
 
             const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
             const finalUrl = scriptUrl + "?id=" + userId + "&pass=My_Secret_123";
 
-            // Генерируем QR
             const qrContainer = document.getElementById("qrcode");
             qrContainer.innerHTML = ""; 
             new QRCode(qrContainer, {
                 text: finalUrl,
-                width: 200,
-                height: 200,
+                width: 220,
+                height: 220,
                 correctLevel : QRCode.CorrectLevel.L
             });
         }, 500);
