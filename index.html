@@ -1,55 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Моя Карта</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <style>
-    body { 
-      font-family: sans-serif; text-align: center; margin-top: 40px; 
-      background-color: var(--tg-theme-bg-color, #f4f4f4); 
-      color: var(--tg-theme-text-color, #000); 
-    }
-    .card { 
-      background: white; border-radius: 15px; padding: 20px; 
-      display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-    }
-    #qrcode { display: flex; justify-content: center; margin-top: 15px; }
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моя Карта</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding-top: 40px; }
+        .card { background: white; border-radius: 20px; padding: 25px; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        #qrcode { margin-top: 20px; display: flex; justify-content: center; }
+    </style>
 </head>
 <body>
-  <h2>Карта клиента</h2>
-  <p>Покажите этот код администратору</p>
-  
-  <div class="card">
-    <div id="qrcode"></div>
-  </div>
-
-  <script>
-    // Инициализируем Telegram
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // Открываем почти на весь экран
-
-    // Получаем ID пользователя из Telegram
-    const userId = tg.initDataUnsafe?.user?.id || 'TEST_ID_123';
-
-    // ВАЖНО: ВСТАВЬ СВОЮ ДЛИННУЮ ССЫЛКУ ИЗ GOOGLE ТАБЛИЦ НИЖЕ
-    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxEmlp2st8QgANppaqIfzGsePF9ikqk0p0mb68awJAs7yb0AppjePDCk0U3eDJwMp0haw/exec";
-
-    // Собираем ссылку для QR-кода
-    const qrData = googleScriptUrl + "?id=" + userId;
-
-    // Рисуем сам QR-код
-    new QRCode(document.getElementById("qrcode"), {
-      text: qrData,
-      width: 220,
-      height: 220,
-      colorDark : "#000000",
-      colorLight : "#ffffff",
-      correctLevel : QRCode.CorrectLevel.H
-    });
-  </script>
+    <h2>Карта клиента</h2>
+    <div class="card">
+        <div id="qrcode"></div>
+    </div>
+    <script>
+        const tg = window.Telegram.WebApp;
+        const userId = tg.initDataUnsafe?.user?.id || 'TEST';
+        new QRCode(document.getElementById("qrcode"), { text: userId.toString(), width: 200, height: 200 });
+        tg.expand();
+    </script>
 </body>
 </html>
