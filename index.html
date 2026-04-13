@@ -19,10 +19,19 @@
         <div id="qrcode"></div>
     </div>
     <script>
-        const tg = window.Telegram.WebApp;
-        const userId = tg.initDataUnsafe?.user?.id || "NoID";
-        new QRCode(document.getElementById("qrcode"), { text: userId.toString(), width: 200, height: 200 });
-        tg.expand();
+        // 1. Получаем данные от Telegram WebApp
+const tg = window.Telegram.WebApp;
+const user = tg.initDataUnsafe?.user;
+
+// 2. Проверяем, есть ли ID
+const userId = user ? user.id : "NoID";
+
+// 3. Формируем ссылку (Убедитесь, что здесь именно ВАША ссылка на скрипт)
+const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
+const finalUrl = `${scriptUrl}?id=${userId}&pass=My_Secret_123`;
+
+// 4. Генерируем QR-код с этой ссылкой (пример для библиотеки qrcode.js)
+new QRCode(document.getElementById("qrcode"), finalUrl);
     </script>
 </body>
 </html>
