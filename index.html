@@ -3,24 +3,22 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Моя Карта</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding-top: 40px; }
-        .card { background: white; border-radius: 20px; padding: 25px; display: inline-block; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        #qrcode { margin-top: 20px; display: flex; justify-content: center; }
+        body { font-family: sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
+        .card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        #qrcode { display: flex; justify-content: center; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <h2>Карта клиента</h2>
     <div class="card">
+        <h3>КАРТА ЛОЯЛЬНОСТИ</h3>
         <div id="qrcode"></div>
     </div>
     <script>
         const tg = window.Telegram.WebApp;
-        const userId = tg.initDataUnsafe?.user?.id || 'TEST';
-        new QRCode(document.getElementById("qrcode"), { text: userId.toString(), width: 200, height: 200 });
+        new QRCode(document.getElementById("qrcode"), { text: tg.initDataUnsafe.user.id.toString(), width: 200, height: 200 });
         tg.expand();
     </script>
 </body>
