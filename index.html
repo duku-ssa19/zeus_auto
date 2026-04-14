@@ -39,6 +39,38 @@
     <button id="adm" class="btn-scan">СКАНИРОВАТЬ QR</button>
 
     <script>
+        // 1. Узнаем ID того, кто открыл страницу, из ссылки
+const urlParams = new URLSearchParams(window.location.search);
+const visitorId = urlParams.get('id');
+
+// 2. Ваш ID (замените на свой настоящий)
+const MY_ADMIN_ID = "797189199"; 
+
+// 3. Элементы интерфейса (проверьте, что ID в HTML такие же)
+const qrContainer = document.getElementById("qrcode");
+const scanButton = document.getElementById("adm"); // кнопка сканера
+
+// --- ГЛАВНАЯ ЛОГИКА РАЗДЕЛЕНИЯ ---
+
+if (visitorId === MY_ADMIN_ID) {
+    // ВЫ КАК АДМИН
+    qrContainer.innerHTML = "<h3>Режим администратора</h3>"; // Свой QR вам не нужен
+    scanButton.style.display = "block"; // Показываем кнопку сканирования
+} else {
+    // ВАШ КЛИЕНТ
+    scanButton.style.display = "none"; // Прячем кнопку сканера от клиента!
+    
+    // Генерируем QR-код именно ДЛЯ КЛИЕНТА (его вы будете сканировать)
+    // Данные в QR будут: ссылка_на_бота?id=КЛИЕНТА
+    const clientData = `https://script.google.com/macros/s/.../exec?action=add&id=${visitorId}&pass=My_Secret_123`;
+    
+    new QRCodeStyling({
+        width: 150,
+        height: 150,
+        data: clientData,
+        // ... ваши настройки стиля ...
+    }).append(qrContainer);
+}
         const tg = window.Telegram.WebApp;
         tg.expand();
         const uid = tg.initDataUnsafe?.user?.id || "797189199";
