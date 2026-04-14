@@ -6,183 +6,65 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <style>
-        :root {
-            --bg: #050505;
-            --card: #121214;
-            --accent: #2c69ff; /* Глубокий синий */
-            --text: #ffffff;
-        }
-
-        body {
-            font-family: -apple-system, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: hidden;
-        }
-
-        .header {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            margin-bottom: 40px;
-            margin-top: 10px;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo-img {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background-image: url('logo.png');
-            background-size: cover;
-        }
-
-        .logo-text {
-            font-weight: 900;
-            font-size: 24px;
-            letter-spacing: -0.5px;
-            text-transform: uppercase;
-        }
-
+        :root { --bg: #050505; --card: #121214; --accent: #2c69ff; --text: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .header { display: flex; justify-content: center; width: 100%; margin: 10px 0 40px 0; }
+        .logo-container { display: flex; align-items: center; gap: 12px; }
+        .logo-img { width: 42px; height: 42px; border-radius: 50%; background: url('logo.png') center/cover; }
+        .logo-text { font-weight: 900; font-size: 24px; text-transform: uppercase; }
         .logo-text span { color: var(--accent); }
-
-        .card {
-            display: flex;
-            background: var(--card);
-            width: 100%;
-            max-width: 340px;
-            border-radius: 35px;
-            overflow: hidden;
-            height: 170px;
-            box-shadow: 0 15px 35px rgba(44, 105, 255, 0.15);
-        }
-
-        .card-left {
-            background: var(--accent);
-            width: 170px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #qrcode {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .card-right {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .v-num { font-size: 68px; font-weight: 800; line-height: 1; }
-        .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; letter-spacing: 1px; }
-
-        .info-btn {
-            color: var(--accent);
-            font-size: 14px;
-            margin-top: 30px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .btn-scan {
-            display: none;
-            margin-top: 35px;
-            width: 100%;
-            max-width: 340px;
-            padding: 20px;
-            border-radius: 20px;
-            border: none;
-            background: #e63946; /* Красный для кнопки сканера */
-            color: white;
-            font-weight: 800;
-            font-size: 15px;
-            box-shadow: 0 10px 20px rgba(230, 57, 70, 0.2);
-        }
+        .card { display: flex; background: var(--card); width: 100%; max-width: 340px; border-radius: 35px; overflow: hidden; height: 170px; box-shadow: 0 15px 35px rgba(44, 105, 255, 0.15); }
+        .card-left { background: var(--accent); width: 170px; display: flex; align-items: center; justify-content: center; }
+        .card-right { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .v-num { font-size: 60px; font-weight: 800; line-height: 1; }
+        /* Состояние загрузки */
+        .loading { font-size: 20px; opacity: 0.5; }
+        .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; }
+        .btn-scan { display: none; margin-top: 35px; width: 100%; max-width: 340px; padding: 20px; border-radius: 20px; border: none; background: #e63946; color: white; font-weight: 800; }
     </style>
 </head>
 <body>
-
     <div class="header">
         <div class="logo-container">
             <div class="logo-img"></div>
             <div class="logo-text">ZEUS<span>AUTO</span></div>
         </div>
     </div>
-
     <div class="card">
-        <div class="card-left">
-            <div id="qrcode"></div>
-        </div>
+        <div class="card-left"><div id="qrcode"></div></div>
         <div class="card-right">
-            <div class="v-num" id="v">0</div>
+            <div class="v-num" id="v"><span class="loading">...</span></div>
             <div class="v-lab">визитов</div>
         </div>
     </div>
-
-    <div class="info-btn" onclick="tg.showAlert('📍 Каждая 4-я мойка: скидка\n🎁 Каждая 8-я мойка: подарок!')">ⓘ Условия программы</div>
-
     <button id="adm" class="btn-scan">СКАНИРОВАТЬ QR</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-
         const uid = tg.initDataUnsafe?.user?.id || "797189199";
         const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
 
-        // Настройка "гладкого" QR-кода
+        // QR теперь содержит action=add. Сам по себе этот URL ничего не делает, пока его не вызовет fetch.
         const qrCode = new QRCodeStyling({
-            width: 135,
-            height: 135,
-            type: "svg",
-            data: `${scriptUrl}?id=${uid}&pass=My_Secret_123`,
-            dotsOptions: {
-                color: "#121214", // Цвет точек (в тон правой части)
-                type: "rounded"  // Закругленные точки как у DriveeCon
-            },
-            backgroundOptions: {
-                color: "transparent",
-            },
-            cornersSquareOptions: {
-                type: "extra-rounded", // Скругленные угловые квадраты
-                color: "#121214"
-            },
-            cornersDotOptions: {
-                type: "dot",
-                color: "#121214"
-            }
+            width: 135, height: 135, type: "svg",
+            data: `${scriptUrl}?action=add&id=${uid}&pass=My_Secret_123`,
+            dotsOptions: { color: "#121214", type: "rounded" },
+            cornersSquareOptions: { type: "extra-rounded", color: "#121214" }
         });
-
         qrCode.append(document.getElementById("qrcode"));
 
-        // Получение визитов
+        // Загружаем визиты (используем action=check)
         fetch(`${scriptUrl}?action=check&id=${uid}`)
             .then(r => r.json())
-            .then(d => { document.getElementById('v').innerText = d.visits || 0; });
+            .then(d => { document.getElementById('v').innerText = d.visits; });
 
-        // Админ-панель
         const admins = ["797189199"]; 
         if(admins.includes(String(uid))) {
             const b = document.getElementById('adm');
             b.style.display = 'block';
             b.onclick = () => {
-                tg.showScanQrPopup({text:"Сканирование карты клиента"}, (r) => {
+                tg.showScanQrPopup({text:"Сканирование клиента"}, (r) => {
                     if(!r) return;
                     fetch(r).then(res => res.text()).then(t => { 
                         tg.showAlert(t); 
