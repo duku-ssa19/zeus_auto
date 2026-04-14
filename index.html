@@ -17,7 +17,6 @@
         .card-left { background: var(--accent); width: 170px; display: flex; align-items: center; justify-content: center; }
         .card-right { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .v-num { font-size: 60px; font-weight: 800; line-height: 1; }
-        /* Состояние загрузки */
         .loading { font-size: 20px; opacity: 0.5; }
         .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; }
         .btn-scan { display: none; margin-top: 35px; width: 100%; max-width: 340px; padding: 20px; border-radius: 20px; border: none; background: #e63946; color: white; font-weight: 800; }
@@ -45,20 +44,22 @@
         const uid = tg.initDataUnsafe?.user?.id || "797189199";
         const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
 
-        // QR теперь содержит action=add. Сам по себе этот URL ничего не делает, пока его не вызовет fetch.
+        // Генерируем QR с прозрачным фоном
         const qrCode = new QRCodeStyling({
             width: 135, height: 135, type: "svg",
             data: `${scriptUrl}?action=add&id=${uid}&pass=My_Secret_123`,
             dotsOptions: { color: "#121214", type: "rounded" },
-            cornersSquareOptions: { type: "extra-rounded", color: "#121214" }
+            cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
+            backgroundOptions: { color: "transparent" } // <-- Эта строчка убирает белый квадрат
         });
         qrCode.append(document.getElementById("qrcode"));
 
-        // Загружаем визиты (используем action=check)
+        // Загружаем визиты
         fetch(`${scriptUrl}?action=check&id=${uid}`)
             .then(r => r.json())
             .then(d => { document.getElementById('v').innerText = d.visits; });
 
+        // Админка
         const admins = ["797189199"]; 
         if(admins.includes(String(uid))) {
             const b = document.getElementById('adm');
