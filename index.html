@@ -21,6 +21,8 @@
         .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; }
         .btn-scan { display: none; margin-top: 35px; width: 100%; max-width: 340px; padding: 20px; border-radius: 20px; border: none; background: #e63946; color: white; font-weight: 800; }
         .admin-message { color: white; text-align: center; font-weight: bold; font-size: 14px; }
+        .error-container { color: white; text-align: center; padding: 10px; }
+        .reload-btn { padding: 12px 24px; background: #2c69ff; color: white; border: none; border-radius: 12px; font-weight: bold; margin-top: 15px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -41,7 +43,7 @@
 
     <script>
         (function() {
-            // Безопасная проверка наличия Telegram API
+            // Проверка наличия Telegram API
             if (!window.Telegram || !window.Telegram.WebApp) {
                 document.body.innerHTML = '<div style="color:white; text-align:center; margin-top:50px; font-family:sans-serif;">Пожалуйста, откройте эту страницу через Telegram бота.</div>';
                 return;
@@ -54,70 +56,122 @@
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
             const ADMIN_PASS = "My_Secret_123";
 
-            let userId = "";
-            try {
-                userId = String(tg.initDataUnsafe?.user?.id || "");
-            } catch(e) {
-                console.error("Ошибка получения userId:", e);
-            }
-
-            if (!userId) {
-                document.getElementById("qrcode").innerHTML = '<div style="color:white;">Ошибка: нет ID</div>';
-                return;
-            }
-
-            const isAdmin = ADMIN_IDS.includes(userId);
+            // Элементы DOM
             const qrContainer = document.getElementById("qrcode");
             const scanButton = document.getElementById("adm");
             const visitsElement = document.getElementById("v");
 
-            function loadVisits() {
-                fetch(`${SCRIPT_URL}?action=check&id=${userId}`)
+            // Функция для отображения ошибки с кнопкой обновления
+            function showErrorWithReload(message) {
+                qrContainer.innerHTML = `
+                    <div class="error-container">
+                        ${message}<br><br>
+                        <button class="reload-btn" onclick="window.location.reload()">🔄 Обновить страницу</button>
+                    </div>
+                `;
+                visitsElement.innerText = "?";
+            }
+
+            // Функция загрузки визитов
+            function loadVisits(uid) {
+                fetch(`${SCRIPT_URL}?action=check&id=${uid}`)
                     .then(r => r.json())
                     .then(d => { visitsElement.innerText = d.visits || 0; })
                     .catch(e => { visitsElement.innerText = "?"; });
             }
-            loadVisits();
 
-            if (isAdmin) {
-                qrContainer.innerHTML = '<div class="admin-message">👑 Режим<br>администратора</div>';
-                scanButton.style.display = "block";
-                scanButton.onclick = function() {
-                    tg.showScanQrPopup({ text: "Наведите камеру на QR клиента" }, function(result) {
-                        if (!result) {
-                            tg.showAlert("❌ Сканирование отменено");
-                            return;
-                        }
-                        fetch(result)
-                            .then(res => res.text())
-                            .then(msg => {
-                                tg.showAlert(msg);
-                                loadVisits();
-                            })
-                            .catch(err => {
-                                tg.showAlert("❌ Ошибка сети");
-                            });
-                        return true;
+            // Функция инициализации приложения после получения userId
+            function initApp(userId) {
+                const isAdmin = ADMIN_IDS.includes(userId);
+                
+                loadVisits(userId);
+
+                if (isAdmin) {
+                    qrContainer.innerHTML = '<div class="admin-message">👑 Режим<br>администратора</div>';
+                    scanButton.style.display = "block";
+                    scanButton.onclick = function() {
+                        tg.showScanQrPopup({ text: "Наведите камеру на QR клиента" }, function(result) {
+                            if (!result) {
+                                tg.showAlert("❌ Сканирование отменено");
+                                return;
+                            }
+                            fetch(result)
+                                .then(res => res.text())
+                                .then(msg => {
+                                    tg.showAlert(msg);
+                                    loadVisits(userId);
+                                })
+                                .catch(err => {
+                                    tg.showAlert("❌ Ошибка сети");
+                                });
+                            return true;
+                        });
+                    };
+                    
+                    // Для админа убираем MainButton
+                    tg.MainButton.hide();
+                } else {
+                    scanButton.style.display = "none";
+                    const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
+                    try {
+                        new QRCodeStyling({
+                            width: 135,
+                            height: 135,
+                            type: "svg",
+                            data: qrData,
+                            dotsOptions: { color: "#121214", type: "rounded" },
+                            cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
+                            backgroundOptions: { color: "transparent" }
+                        }).append(qrContainer);
+                    } catch(e) {
+                        console.error(e);
+                        qrContainer.innerHTML = '<div style="color:white;">Ошибка генерации QR</div>';
+                    }
+
+                    // Добавляем кнопку "Что такое баллы?" через MainButton
+                    const mainButton = tg.MainButton;
+                    mainButton.setText("ℹ️ Что такое баллы?");
+                    mainButton.show();
+                    mainButton.onClick(() => {
+                        tg.showPopup({
+                            title: "Система лояльности",
+                            message: "За каждую мойку вы получаете 1 визит.\n\n🎁 4-я мойка — скидка 20%\n🎉 8-я мойка — в подарок!",
+                            buttons: [{type: "ok"}]
+                        });
                     });
-                };
-            } else {
-                scanButton.style.display = "none";
-                const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
-                try {
-                    new QRCodeStyling({
-                        width: 135,
-                        height: 135,
-                        type: "svg",
-                        data: qrData,
-                        dotsOptions: { color: "#121214", type: "rounded" },
-                        cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
-                        backgroundOptions: { color: "transparent" }
-                    }).append(qrContainer);
-                } catch(e) {
-                    console.error(e);
-                    qrContainer.innerHTML = '<div style="color:white;">Ошибка QR</div>';
                 }
             }
+
+            // Получение userId с повторной попыткой
+            function getUserIdWithRetry(callback) {
+                let userId = "";
+                try {
+                    userId = String(tg.initDataUnsafe?.user?.id || "");
+                } catch(e) {
+                    console.error("Ошибка получения userId:", e);
+                }
+
+                if (userId) {
+                    callback(userId);
+                } else {
+                    // Пытаемся дождаться инициализации Web App
+                    tg.ready();
+                    setTimeout(() => {
+                        try {
+                            userId = String(tg.initDataUnsafe?.user?.id || "");
+                        } catch(e) {}
+                        
+                        if (userId) {
+                            callback(userId);
+                        } else {
+                            showErrorWithReload("⚠️ Не удалось получить данные пользователя.");
+                        }
+                    }, 800);
+                }
+            }
+
+            // Запускаем получение ID и инициализацию
+            getUserIdWithRetry(initApp);
         })();
     </script>
 </body>
