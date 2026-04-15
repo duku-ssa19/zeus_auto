@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <style>
         :root { --bg: #050505; --card: #121214; --accent: #2c69ff; --text: #ffffff; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
@@ -17,10 +17,10 @@
         .card-left { background: var(--accent); width: 170px; display: flex; align-items: center; justify-content: center; }
         .card-right { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .v-num { font-size: 60px; font-weight: 800; line-height: 1; }
+        /* Состояние загрузки */
         .loading { font-size: 20px; opacity: 0.5; }
         .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; }
         .btn-scan { display: none; margin-top: 35px; width: 100%; max-width: 340px; padding: 20px; border-radius: 20px; border: none; background: #e63946; color: white; font-weight: 800; }
-        .admin-message { color: white; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -40,118 +40,45 @@
     <button id="adm" class="btn-scan">СКАНИРОВАТЬ QR</button>
 
     <script>
-        (function() {
-            // --------------------------------------------------------------
-            // 1. Инициализация Telegram Web App
-            // --------------------------------------------------------------
-            const tg = window.Telegram.WebApp;
-            tg.expand();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const uid = tg.initDataUnsafe?.user?.id || "797189199";
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
 
-            // --------------------------------------------------------------
-            // 2. Настройки (должны совпадать с Apps Script)
-            // --------------------------------------------------------------
-            const ADMIN_IDS = ["797189199"]; // Ваш ID администратора
-            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
-            const ADMIN_PASS = "My_Secret_123";
+        // QR теперь содержит action=add. Сам по себе этот URL ничего не делает, пока его не вызовет fetch.
+        // Генерируем QR с прозрачным фоном
+        const qrCode = new QRCodeStyling({
+            width: 135, height: 135, type: "svg",
+            data: `${scriptUrl}?action=add&id=${uid}&pass=My_Secret_123`,
+            dotsOptions: { color: "#121214", type: "rounded" },
+            cornersSquareOptions: { type: "extra-rounded", color: "#121214" }
+            cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
+            backgroundOptions: { color: "transparent" } // <-- Эта строчка убирает белый квадрат
+        });
+        qrCode.append(document.getElementById("qrcode"));
 
-            // --------------------------------------------------------------
-            // 3. Получение ID текущего пользователя
-            // --------------------------------------------------------------
-            let userId = "";
-            try {
-                userId = String(tg.initDataUnsafe?.user?.id || "");
-            } catch(e) {
-                console.error("Ошибка получения userId:", e);
-            }
+        // Загружаем визиты (используем action=check)
+        // Загружаем визиты
+        fetch(`${scriptUrl}?action=check&id=${uid}`)
+            .then(r => r.json())
+            .then(d => { document.getElementById('v').innerText = d.visits; });
 
-            // Если ID не получен (например, открыто в браузере), показываем предупреждение
-            if (!userId) {
-                document.body.innerHTML = `
-                    <div style="color:white; text-align:center; margin-top:50px;">
-                        <h2>Откройте в Telegram</h2>
-                        <p>Эта страница работает только внутри бота.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            // Определяем, администратор или нет
-            const isAdmin = ADMIN_IDS.includes(userId);
-
-            // --------------------------------------------------------------
-            // 4. DOM-элементы
-            // --------------------------------------------------------------
-            const qrContainer = document.getElementById("qrcode");
-            const scanButton = document.getElementById("adm");
-            const visitsElement = document.getElementById("v");
-
-            // --------------------------------------------------------------
-            // 5. Функция загрузки количества визитов (для всех)
-            // --------------------------------------------------------------
-            function loadVisits() {
-                fetch(`${SCRIPT_URL}?action=check&id=${userId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        visitsElement.innerText = data.visits || 0;
-                    })
-                    .catch(error => {
-                        console.error("Ошибка загрузки визитов:", error);
-                        visitsElement.innerText = "?";
+        // Админка
+        const admins = ["797189199"]; 
+        if(admins.includes(String(uid))) {
+            const b = document.getElementById('adm');
+            b.style.display = 'block';
+            b.onclick = () => {
+                tg.showScanQrPopup({text:"Сканирование клиента"}, (r) => {
+                    if(!r) return;
+                    fetch(r).then(res => res.text()).then(t => { 
+                        tg.showAlert(t); 
+                        location.reload(); 
                     });
-            }
-            loadVisits();
-
-            // --------------------------------------------------------------
-            // 6. Разделение логики: АДМИН vs КЛИЕНТ
-            // --------------------------------------------------------------
-            if (isAdmin) {
-                // ========== ИНТЕРФЕЙС АДМИНИСТРАТОРА ==========
-                // Вместо QR показываем сообщение
-                qrContainer.innerHTML = '<div class="admin-message">👑 Режим<br>администратора</div>';
-                // Показываем кнопку сканирования
-                scanButton.style.display = "block";
-                scanButton.onclick = function() {
-                    tg.showScanQrPopup({ text: "Наведите камеру на QR-код клиента" }, function(result) {
-                        if (!result) {
-                            tg.showAlert("❌ Сканирование отменено");
-                            return;
-                        }
-                        // result — это URL, который мы закодировали в QR-коде клиента
-                        fetch(result)
-                            .then(res => res.text())
-                            .then(msg => {
-                                tg.showAlert(msg);
-                                loadVisits(); // Обновляем счётчик визитов на экране админа
-                            })
-                            .catch(err => {
-                                console.error(err);
-                                tg.showAlert("❌ Ошибка сети или сервера");
-                            });
-                        return true; // Закрыть сканер
-                    });
-                };
-            } else {
-                // ========== ИНТЕРФЕЙС ОБЫЧНОГО КЛИЕНТА ==========
-                // Прячем кнопку сканера
-                scanButton.style.display = "none";
-                // Генерируем QR-код с данными для начисления визита
-                const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
-                try {
-                    new QRCodeStyling({
-                        width: 135,
-                        height: 135,
-                        type: "svg",
-                        data: qrData,
-                        dotsOptions: { color: "#121214", type: "rounded" },
-                        cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
-                        backgroundOptions: { color: "transparent" }
-                    }).append(qrContainer);
-                } catch(e) {
-                    console.error("Ошибка создания QR:", e);
-                    qrContainer.innerHTML = '<div style="color:white;">Ошибка QR</div>';
-                }
-            }
-        })();
+                    return true;
+                });
+            };
+        }
     </script>
 </body>
 </html>
