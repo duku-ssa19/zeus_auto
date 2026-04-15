@@ -17,10 +17,10 @@
         .card-left { background: var(--accent); width: 170px; display: flex; align-items: center; justify-content: center; }
         .card-right { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .v-num { font-size: 60px; font-weight: 800; line-height: 1; }
+        /* Состояние загрузки */
         .loading { font-size: 20px; opacity: 0.5; }
         .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; }
         .btn-scan { display: none; margin-top: 35px; width: 100%; max-width: 340px; padding: 20px; border-radius: 20px; border: none; background: #e63946; color: white; font-weight: 800; }
-        .admin-message { color: white; text-align: center; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -40,85 +40,40 @@
     <button id="adm" class="btn-scan">СКАНИРОВАТЬ QR</button>
 
     <script>
-        (function() {
-            // Безопасная проверка наличия Telegram API
-            if (!window.Telegram || !window.Telegram.WebApp) {
-                document.body.innerHTML = '<div style="color:white; text-align:center; margin-top:50px; font-family:sans-serif;">Пожалуйста, откройте эту страницу через Telegram бота.</div>';
-                return;
-            }
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const uid = tg.initDataUnsafe?.user?.id || "797189199";
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
 
-            const tg = window.Telegram.WebApp;
-            tg.expand();
+        // QR теперь содержит action=add. Сам по себе этот URL ничего не делает, пока его не вызовет fetch.
+        const qrCode = new QRCodeStyling({
+            width: 135, height: 135, type: "svg",
+            data: `${scriptUrl}?action=add&id=${uid}&pass=My_Secret_123`,
+            dotsOptions: { color: "#121214", type: "rounded" },
+            cornersSquareOptions: { type: "extra-rounded", color: "#121214" }
+        });
+        qrCode.append(document.getElementById("qrcode"));
 
-            const ADMIN_IDS = ["797189199"];
-            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
-            const ADMIN_PASS = "My_Secret_123";
+        // Загружаем визиты (используем action=check)
+        fetch(`${scriptUrl}?action=check&id=${uid}`)
+            .then(r => r.json())
+            .then(d => { document.getElementById('v').innerText = d.visits; });
 
-            let userId = "";
-            try {
-                userId = String(tg.initDataUnsafe?.user?.id || "");
-            } catch(e) {
-                console.error("Ошибка получения userId:", e);
-            }
-
-            if (!userId) {
-                document.getElementById("qrcode").innerHTML = '<div style="color:white;">Ошибка: нет ID</div>';
-                return;
-            }
-
-            const isAdmin = ADMIN_IDS.includes(userId);
-            const qrContainer = document.getElementById("qrcode");
-            const scanButton = document.getElementById("adm");
-            const visitsElement = document.getElementById("v");
-
-            function loadVisits() {
-                fetch(`${SCRIPT_URL}?action=check&id=${userId}`)
-                    .then(r => r.json())
-                    .then(d => { visitsElement.innerText = d.visits || 0; })
-                    .catch(e => { visitsElement.innerText = "?"; });
-            }
-            loadVisits();
-
-            if (isAdmin) {
-                qrContainer.innerHTML = '<div class="admin-message">👑 Режим<br>администратора</div>';
-                scanButton.style.display = "block";
-                scanButton.onclick = function() {
-                    tg.showScanQrPopup({ text: "Наведите камеру на QR клиента" }, function(result) {
-                        if (!result) {
-                            tg.showAlert("❌ Сканирование отменено");
-                            return;
-                        }
-                        fetch(result)
-                            .then(res => res.text())
-                            .then(msg => {
-                                tg.showAlert(msg);
-                                loadVisits();
-                            })
-                            .catch(err => {
-                                tg.showAlert("❌ Ошибка сети");
-                            });
-                        return true;
+        const admins = ["797189199"]; 
+        if(admins.includes(String(uid))) {
+            const b = document.getElementById('adm');
+            b.style.display = 'block';
+            b.onclick = () => {
+                tg.showScanQrPopup({text:"Сканирование клиента"}, (r) => {
+                    if(!r) return;
+                    fetch(r).then(res => res.text()).then(t => { 
+                        tg.showAlert(t); 
+                        location.reload(); 
                     });
-                };
-            } else {
-                scanButton.style.display = "none";
-                const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
-                try {
-                    new QRCodeStyling({
-                        width: 135,
-                        height: 135,
-                        type: "svg",
-                        data: qrData,
-                        dotsOptions: { color: "#121214", type: "rounded" },
-                        cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
-                        backgroundOptions: { color: "transparent" }
-                    }).append(qrContainer);
-                } catch(e) {
-                    console.error(e);
-                    qrContainer.innerHTML = '<div style="color:white;">Ошибка QR</div>';
-                }
-            }
-        })();
+                    return true;
+                });
+            };
+        }
     </script>
 </body>
 </html>
