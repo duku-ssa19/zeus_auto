@@ -27,40 +27,81 @@
   <script>
     (function() {
       // --------------------------------------------------------------
-      // 1. Инициализация Telegram Web App
+      // 1. БЕЗОПАСНАЯ ПРОВЕРКА Telegram Web App
       // --------------------------------------------------------------
+      if (!window.Telegram || !window.Telegram.WebApp) {
+        // Если открыто в обычном браузере — показываем понятную заглушку
+        document.body.innerHTML = `
+          <div style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #121214;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+          ">
+            <h2>📱 Откройте в Telegram</h2>
+            <p>Эта страница работает только внутри Telegram-бота.<br>Нажмите кнопку <b>«Моя карта»</b> в чате с Zeus Auto.</p>
+          </div>
+        `;
+        return; // Прекращаем выполнение скрипта
+      }
+
       const tg = window.Telegram.WebApp;
       tg.expand(); // Растягиваем окно на весь экран
-      
+
       // --------------------------------------------------------------
       // 2. Настройки (должны совпадать с Google Apps Script)
       // --------------------------------------------------------------
       const ADMIN_IDS = ["797189199"];                   // ID администраторов
       const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
       const ADMIN_PASS = "My_Secret_123";                // Пароль для действия add
-      
+
       // --------------------------------------------------------------
       // 3. Получение ID текущего пользователя Telegram
       // --------------------------------------------------------------
-      // Берём ID из объекта initDataUnsafe – он доступен внутри Web App
-      const userId = String(tg.initDataUnsafe?.user?.id || "");
-      
-      // Если userId пустой (например, открыли не в Telegram), показываем предупреждение
-      if (!userId) {
-        document.body.innerHTML = "<h2 style='color:white;text-align:center;margin-top:40px;'>Ошибка: откройте приложение через Telegram</h2>";
-        throw new Error("User ID not found");
+      let userId = "";
+      try {
+        // Берём ID из initDataUnsafe (доступен внутри Web App)
+        userId = String(tg.initDataUnsafe?.user?.id || "");
+      } catch (e) {
+        console.error("Ошибка получения userId:", e);
       }
-      
+
+      // Если userId всё равно пустой — показываем ошибку
+      if (!userId) {
+        document.body.innerHTML = `
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #121214;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+          ">
+            <h2>❌ Не удалось получить ID пользователя</h2>
+          </div>
+        `;
+        return;
+      }
+
       // Определяем, является ли пользователь администратором
       const isAdmin = ADMIN_IDS.includes(userId);
-      
+
       // --------------------------------------------------------------
       // 4. DOM-элементы
       // --------------------------------------------------------------
       const qrContainer = document.getElementById("qrcode");
       const scanButton = document.getElementById("adm");
       const visitsElement = document.getElementById("v");
-      
+
       // --------------------------------------------------------------
       // 5. Функция загрузки количества визитов (для всех)
       // --------------------------------------------------------------
@@ -75,16 +116,16 @@
             visitsElement.innerText = "?";
           });
       }
-      
+
       // Загружаем визиты сразу при старте
       loadVisits();
-      
+
       // --------------------------------------------------------------
       // 6. Разделение логики: АДМИН vs КЛИЕНТ
       // --------------------------------------------------------------
       if (isAdmin) {
         // ========== ИНТЕРФЕЙС АДМИНИСТРАТОРА ==========
-        
+
         // Очищаем контейнер QR-кода и выводим сообщение, что это режим админа
         qrContainer.innerHTML = `
           <div style="
@@ -103,10 +144,10 @@
             👑 Режим<br>администратора
           </div>
         `;
-        
+
         // Показываем кнопку сканирования
         scanButton.style.display = "block";
-        
+
         // Назначаем действие при клике на кнопку
         scanButton.onclick = function() {
           tg.showScanQrPopup({ text: "Наведите камеру на QR-код клиента" }, function(result) {
@@ -114,7 +155,7 @@
               tg.showAlert("❌ Сканирование отменено");
               return;
             }
-            
+
             // result — это URL, который мы закодировали в QR-коде клиента
             // Делаем GET-запрос по этому URL (он уже содержит action=add, id и pass)
             fetch(result)
@@ -127,37 +168,37 @@
                 console.error("Ошибка при запросе:", error);
                 tg.showAlert("❌ Ошибка сети или сервера");
               });
-            
+
             return true; // Закрываем сканер после успешного сканирования
           });
         };
-        
+
       } else {
         // ========== ИНТЕРФЕЙС ОБЫЧНОГО КЛИЕНТА ==========
-        
+
         // Прячем кнопку сканера
         scanButton.style.display = "none";
-        
+
         // Генерируем QR-код с данными для начисления визита
         const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
-        
+
         // Создаём стильный QR-код
-        new QRCodeStyling({
-          width: 135,
-          height: 135,
-          type: "svg",
-          data: qrData,
-          dotsOptions: { color: "#121214", type: "rounded" },
-          cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
-          backgroundOptions: { color: "transparent" }
-        }).append(qrContainer);
+        try {
+          new QRCodeStyling({
+            width: 135,
+            height: 135,
+            type: "svg",
+            data: qrData,
+            dotsOptions: { color: "#121214", type: "rounded" },
+            cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
+            backgroundOptions: { color: "transparent" }
+          }).append(qrContainer);
+        } catch (e) {
+          console.error("Ошибка создания QR-кода:", e);
+          qrContainer.innerHTML = '<div style="color:white;">Ошибка QR</div>';
+        }
       }
-      
-      // --------------------------------------------------------------
-      // 7. Дополнительно: можно подписаться на событие обновления
-      //    извне, но пока не требуется.
-      // --------------------------------------------------------------
-      
+
     })();
   </script>
 </body>
