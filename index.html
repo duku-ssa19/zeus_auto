@@ -1,140 +1,336 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-    <style>
-        :root { --bg: #050505; --card: #121214; --accent: #2c69ff; --text: #ffffff; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .header { display: flex; justify-content: center; width: 100%; margin: 10px 0 40px 0; }
-        .logo-container { display: flex; align-items: center; gap: 12px; }
-        .logo-img { width: 42px; height: 42px; border-radius: 50%; background: url('logo.png') center/cover; }
-        .logo-text { font-weight: 900; font-size: 24px; text-transform: uppercase; }
-        .logo-text span { color: var(--accent); }
-        .card { display: flex; background: var(--card); width: 100%; max-width: 340px; border-radius: 35px; overflow: hidden; height: 170px; box-shadow: 0 15px 35px rgba(44, 105, 255, 0.15); }
-        .card-left { background: var(--accent); width: 170px; display: flex; align-items: center; justify-content: center; }
-        .card-right { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .v-num { font-size: 60px; font-weight: 800; line-height: 1; }
-        .loading { font-size: 20px; opacity: 0.5; }
-        .v-lab { font-size: 11px; color: #8a8a8e; text-transform: uppercase; margin-top: 5px; }
-        .btn-scan { display: none; margin-top: 35px; width: 100%; max-width: 340px; padding: 20px; border-radius: 20px; border: none; background: #e63946; color: white; font-weight: 800; }
-        .admin-message { color: white; text-align: center; font-weight: bold; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="logo-container">
-            <div class="logo-img"></div>
-            <div class="logo-text">ZEUS<span>AUTO</span></div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-left"><div id="qrcode"></div></div>
-        <div class="card-right">
-            <div class="v-num" id="v"><span class="loading">...</span></div>
-            <div class="v-lab">визитов</div>
-        </div>
-    </div>
-    <button id="adm" class="btn-scan">СКАНИРОВАТЬ QR</button>
+// === НАСТРОЙКИ ===
+var BOT_TOKEN = "huhuhhh";
+var ADMIN_PASS = "My_Secret_123"; 
+var ADMIN_IDS = ["797189199"]; // Добавляйте ID через запятую: ["797189199", "123456789"]
+var GITHUB_URL = "https://duku-ssa19.github.io/zeus_auto"; 
 
-    <script>
-        (function() {
-            // Безопасная проверка наличия Telegram API
-            if (!window.Telegram || !window.Telegram.WebApp) {
-                document.body.innerHTML = '<div style="color:white; text-align:center; margin-top:50px; font-family:sans-serif;">Пожалуйста, откройте эту страницу через Telegram бота.</div>';
-                return;
-            }
+// Вспомогательная функция: экранирование HTML для защиты от XSS
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-            const tg = window.Telegram.WebApp;
-            tg.expand();
+function doPost(e) {
+  var update = JSON.parse(e.postData.contents);
+  
+  // Обработка callback_query (нажатие inline-кнопок)
+  if (update.callback_query) {
+    var callbackData = update.callback_query.data;
+    var adminChatId = String(update.callback_query.from.id);
+    if (callbackData.indexOf("reply_") === 0) {
+      var targetId = callbackData.replace("reply_", "");
+      sendTelegramMessage(adminChatId, "✏️ Введите ответ для пользователя <code>" + targetId + "</code>:\n<code>/reply " + targetId + " [ваш текст]</code>");
+    }
+    return;
+  }
+  
+  if (!update.message) return;
+  
+  var chatId = String(update.message.chat.id);
+  var text = update.message.text || "";
+  var userName = update.message.from.first_name || "Пользователь";
+  
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
 
-            const ADMIN_IDS = ["797189199"];
-            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
-            const ADMIN_PASS = "My_Secret_123";
+  // --- 1. РАССЫЛКА /all (оптимизированная) ---
+  if (ADMIN_IDS.includes(chatId) && text.indexOf("/all") === 0) {
+    var messageToDistribute = text.replace("/all", "").trim();
+    if (messageToDistribute.length < 3) {
+      sendTelegramMessage(chatId, "⚠️ Напишите текст после /all");
+      return;
+    }
+    var statusMsg = sendMassMessage(messageToDistribute);
+    sendTelegramMessage(chatId, "🚀 " + statusMsg);
+    return;
+  }
 
-            let userId = "";
-            try {
-                userId = String(tg.initDataUnsafe?.user?.id || "");
-            } catch(e) {
-                console.error("Ошибка получения userId:", e);
-            }
+  // --- КОМАНДА /reply ДЛЯ ОТВЕТА КЛИЕНТУ ---
+  if (ADMIN_IDS.includes(chatId) && text.indexOf("/reply") === 0) {
+    var parts = text.split(" ");
+    if (parts.length < 3) {
+      sendTelegramMessage(chatId, "⚠️ Формат: <code>/reply [ID] [Текст]</code>");
+      return;
+    }
+    var targetId = parts[1];
+    var replyText = text.replace("/reply " + targetId, "").trim();
+    try {
+      var finalReply = "⚡️ <b>Zeus Auto на связи:</b>\n\n" + replyText;
+      sendTelegramMessage(targetId, finalReply);
+      sendTelegramMessage(chatId, "✅ Отправлено пользователю " + targetId);
+    } catch (e) {
+      sendTelegramMessage(chatId, "❌ Ошибка при отправке.");
+    }
+    return;
+  }
 
-            if (!userId) {
-                document.getElementById("qrcode").innerHTML = '<div style="color:white;">Ошибка: нет ID</div>';
-                return;
-            }
+  // --- КОМАНДА /help ДЛЯ АДМИНОВ ---
+  if (ADMIN_IDS.includes(chatId) && text === "/help") {
+    var helpMessage = "📋 <b>Команды администратора Zeus Auto:</b>\n\n" +
+                      "<code>/all [текст]</code> — отправить рассылку всем клиентам\n" +
+                      "<code>/reply [ID] [текст]</code> — ответить конкретному пользователю\n" +
+                      "<code>/help</code> — показать эту справку\n\n" +
+                      "📌 <b>ID клиента</b> можно скопировать из уведомления о новом сообщении.";
+    sendTelegramMessage(chatId, helpMessage);
+    return;
+  }
 
-            const isAdmin = ADMIN_IDS.includes(userId);
-            const qrContainer = document.getElementById("qrcode");
-            const scanButton = document.getElementById("adm");
-            const visitsElement = document.getElementById("v");
+  // --- 2. ПОИСК ПОЛЬЗОВАТЕЛЯ ---
+  var userRow = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === chatId) { userRow = i + 1; break; }
+  }
 
-            function loadVisits() {
-                fetch(`${SCRIPT_URL}?action=check&id=${userId}`)
-                    .then(r => r.json())
-                    .then(d => { visitsElement.innerText = d.visits || 0; })
-                    .catch(e => { visitsElement.innerText = "?"; });
-            }
-            loadVisits();
+  // --- 3. РЕГИСТРАЦИЯ ---
+  if (userRow === -1) {
+    if (text === "/start") {
+      sheet.appendRow([chatId, new Date(), "", "", 0, "", "WAIT_NAME"]); 
+      sendTelegramMessage(chatId, "👋 Добро пожаловать в <b>Zeus Auto</b>!\n\nКак вас зовут?");
+    }
+    return;
+  }
 
-            // Функция для показа информации о баллах
-            function showBonusInfo() {
-                tg.showPopup({
-                    title: 'Система лояльности Zeus Auto',
-                    message: 'За каждую мойку вы получаете 1 визит на вашу карту. \n\nКаждая 4-я мойка — со скидкой 20%!\nКаждая 8-я мойка — в подарок!\n\nЧем чаще вы моете авто, тем больше бонусов получаете.',
-                    buttons: [{type: 'ok'}]
-                });
-            }
+  var currentStep = data[userRow-1][6]; 
 
-            if (isAdmin) {
-                qrContainer.innerHTML = '<div class="admin-message">👑 Режим<br>администратора</div>';
-                scanButton.style.display = "block";
-                scanButton.onclick = function() {
-                    tg.showScanQrPopup({ text: "Наведите камеру на QR клиента" }, function(result) {
-                        if (!result) {
-                            tg.showAlert("❌ Сканирование отменено");
-                            return;
-                        }
-                        fetch(result)
-                            .then(res => res.text())
-                            .then(msg => {
-                                tg.showAlert(msg);
-                                loadVisits();
-                            })
-                            .catch(err => {
-                                tg.showAlert("❌ Ошибка сети");
-                            });
-                        return true;
-                    });
-                };
-            } else {
-                // === КЛИЕНТ ===
-                scanButton.style.display = "none";
-                const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
-                try {
-                    new QRCodeStyling({
-                        width: 135,
-                        height: 135,
-                        type: "svg",
-                        data: qrData,
-                        dotsOptions: { color: "#121214", type: "rounded" },
-                        cornersSquareOptions: { type: "extra-rounded", color: "#121214" },
-                        backgroundOptions: { color: "transparent" }
-                    }).append(qrContainer);
-                } catch(e) {
-                    console.error(e);
-                    qrContainer.innerHTML = '<div style="color:white;">Ошибка QR</div>';
-                }
+  if (currentStep === "WAIT_NAME") {
+    sheet.getRange(userRow, 3).setValue(text);
+    sheet.getRange(userRow, 7).setValue("WAIT_PHONE");
+    sendTelegramMessage(chatId, "Приятно познакомиться, " + escapeHtml(text) + "!\n\nВведите ваш <b>номер телефона</b>:");
+    return;
+  }
+  if (currentStep === "WAIT_PHONE") {
+    sheet.getRange(userRow, 4).setValue(text);
+    sheet.getRange(userRow, 7).setValue("WAIT_CAR");
+    sendTelegramMessage(chatId, "Записал. Какая у вас <b>марка и модель авто</b>?");
+    return;
+  }
+  if (currentStep === "WAIT_CAR") {
+    sheet.getRange(userRow, 6).setValue(text);
+    sheet.getRange(userRow, 7).setValue("ACTIVE");
+    var menuKeyboard = [
+      ["💳 Моя карта", "ℹ️ Что такое баллы?"],
+      ["📞 Контакты", "🕘 Режим работы"]
+    ];
+    sendTelegramMessage(chatId, "🎉 <b>Регистрация завершена!</b>", menuKeyboard);
+    return;
+  }
 
-                // === Настройка MainButton для клиента ===
-                const mainButton = tg.MainButton;
-                mainButton.setText("ℹ️ Что такое баллы?");
-                mainButton.show();
-                mainButton.onClick(showBonusInfo);
-            }
-        })();
-    </script>
-</body>
-</html>
+  // --- ОБРАБОТКА КНОПОК МЕНЮ (для зарегистрированных) ---
+  if (text === "💳 Моя карта") {
+    var keyboard = [[{"text":"💳 Моя карта","web_app":{"url":GITHUB_URL}}]];
+    sendTelegramMessage(chatId, "Ваша карта лояльности:", keyboard);
+    return;
+  }
+  if (text === "ℹ️ Что такое баллы?") {
+    sendTelegramMessage(chatId, "⭐ <b>Система лояльности Zeus Auto</b>\n\nЗа каждую мойку вы получаете 1 визит на вашу карту.\n\n🎁 Каждая 4-я мойка — со скидкой 20%!\n🎉 Каждая 8-я мойка — в подарок!\n\nЧем чаще вы моете авто, тем больше бонусов получаете.");
+    return;
+  }
+  if (text === "📞 Контакты") {
+    sendTelegramMessage(chatId, "📞 <b>Связь с нами:</b>\nТелефон: +79142729709\n📍 Адрес: Ушакова 19\n🗺️ <a href='https://go.2gis.com/eX6Wc'>Открыть в 2ГИС</a>");
+    return;
+  }
+  if (text === "🕘 Режим работы") {
+    sendTelegramMessage(chatId, "🕘 <b>Режим работы:</b>\nЕжедневно с 10:00 до 22:00");
+    return;
+  }
+
+  // --- 4. ОБРАБОТКА ОБЫЧНЫХ СООБЩЕНИЙ + СЧЕТЧИК ---
+  if (text === "/start") {
+    var menuKeyboard = [
+      ["💳 Моя карта", "ℹ️ Что такое баллы?"],
+      ["📞 Контакты", "🕘 Режим работы"]
+    ];
+    sendTelegramMessage(chatId, "С возвращением! Чем могу помочь?", menuKeyboard);
+  } else {
+    var currentVisits = data[userRow-1][4] || 0;
+    var visitsToDiscount = 10 - (currentVisits % 10);
+    if (visitsToDiscount === 0) visitsToDiscount = 10;
+
+    var userMessage = "👋 Здравствуйте! На связи команда <b>Zeus Auto</b>!\n\n" +
+                      "📊 <b>Ваш статус:</b>\n" +
+                      "У вас <b>" + currentVisits + "</b> " + getVisitWord(currentVisits) + ".\n" +
+                      "До следующей скидки: <b>" + visitsToDiscount + "</b> " + getVisitWord(visitsToDiscount) + "!\n\n" +
+                      "📍 <b>Наш адрес:</b>\n" +
+                      "Ушакова 19\n" +
+                      "🗺️ <a href='https://go.2gis.com/eX6Wc'>Открыть в 2ГИС</a>\n\n" +
+                      "🕘 <b>Режим работы:</b> 10:00 — 22:00\n" +
+                      "📞 <b>Связь:</b> +79142729709\n\n" +
+                      "<i>Ваше сообщение передано администратору.</i>";
+    
+    var menuKeyboard = [
+      ["💳 Моя карта", "ℹ️ Что такое баллы?"],
+      ["📞 Контакты", "🕘 Режим работы"]
+    ];
+    sendTelegramMessage(chatId, userMessage, menuKeyboard);
+    
+    // Безопасное уведомление администраторам с кнопкой "Ответить"
+    var safeUserName = escapeHtml(userName);
+    var safeText = escapeHtml(text);
+    var adminNotice = "📩 <b>Новое сообщение!</b>\n👤 Имя: " + safeUserName + "\n🆔 ID: <code>" + chatId + "</code>\n💬 Текст: " + safeText;
+    
+    var replyKeyboard = {
+      inline_keyboard: [[
+        { text: "✏️ Ответить", callback_data: "reply_" + chatId }
+      ]]
+    };
+    
+    for (var i = 0; i < ADMIN_IDS.length; i++) {
+      sendTelegramMessageWithInline(ADMIN_IDS[i], adminNotice, replyKeyboard);
+    }
+  }
+}
+
+// Вспомогательная функция для склонения слова "визит"
+function getVisitWord(n) {
+  var n1 = Math.abs(n) % 100; 
+  var n2 = n1 % 10;
+  if (n1 > 10 && n1 < 20) return "визитов";
+  if (n2 > 1 && n2 < 5) return "визита";
+  if (n2 == 1) return "визит";
+  return "визитов";
+}
+
+function doGet(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var userId = e.parameter.id;
+  var pass = e.parameter.pass;
+  var action = e.parameter.action;
+  var data = sheet.getDataRange().getValues();
+
+  // 1. ПРОСТО ПРОВЕРКА (для открытия карты)
+  if (action === "check") {
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(userId)) {
+        return ContentService.createTextOutput(JSON.stringify({visits: data[i][4] || 0})).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({visits: 0})).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 2. НАЧИСЛЕНИЕ ВИЗИТА (когда сканируют QR)
+  if (action === "add" && pass === ADMIN_PASS && userId) {
+    var userRow = -1; 
+    var v = 0;
+    
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(userId)) { 
+        userRow = i + 1; 
+        v = Number(data[i][4]) || 0; 
+        break; 
+      }
+    }
+    
+    v++;
+    
+    if (userRow !== -1) {
+      sheet.getRange(userRow, 5).setValue(v);
+      sheet.getRange(userRow, 2).setValue(new Date());
+    }
+
+    // ЛОГИКА БОНУСОВ (4 - скидка, 8 - подарок)
+    var goal = 0;
+    var bonusText = "";
+    var cycleVisit = v % 8;
+
+    if (cycleVisit > 0 && cycleVisit <= 4) {
+      goal = 4;
+      bonusText = "скидки";
+    } else {
+      goal = 8;
+      bonusText = "подарка";
+    }
+
+    var left = goal - (cycleVisit === 0 ? 8 : cycleVisit);
+    if (left < 0) left = 0;
+
+    var pushMessage = "✅ <b>Визит засчитан! Это ваша мойка №" + v + "</b>\n\n";
+    
+    if (v % 8 === 4) {
+      pushMessage += "🎉 Поздравляем! Сегодня у вас <b>СКИДКА</b>!";
+    } else if (v % 8 === 0) {
+      pushMessage += "🎁 Поздравляем! Сегодня у вас <b>ПОДАРОК</b>!";
+    } else {
+      pushMessage += "До следующего " + bonusText + " осталось: <b>" + left + "</b> виз.";
+    }
+    
+    sendTelegramMessage(userId, pushMessage);
+    
+    return ContentService.createTextOutput("Успешно! У клиента мойка №" + v);
+  }
+  
+  return ContentService.createTextOutput("Ошибка: неверные параметры");
+}
+
+function sendTelegramMessage(chatId, text, keyboard) {
+  var payload = { "chat_id": chatId, "text": text, "parse_mode": "HTML" };
+  if (keyboard) {
+    payload["reply_markup"] = JSON.stringify({"keyboard": keyboard, "resize_keyboard": true});
+  }
+  var options = { "method": "post", "contentType": "application/json", "payload": JSON.stringify(payload) };
+  UrlFetchApp.fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", options);
+}
+
+function sendTelegramMessageWithInline(chatId, text, inlineKeyboard) {
+  var payload = {
+    "chat_id": chatId,
+    "text": text,
+    "parse_mode": "HTML",
+    "reply_markup": JSON.stringify(inlineKeyboard)
+  };
+  var options = { "method": "post", "contentType": "application/json", "payload": JSON.stringify(payload) };
+  UrlFetchApp.fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", options);
+}
+
+function sendMassMessage(text) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  var requests = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    var cid = data[i][0];
+    if (cid) {
+      var v = Number(data[i][4]) || 0;
+      var cycleVisit = v % 8;
+      var goal = (cycleVisit >= 0 && cycleVisit < 4) ? 4 : 8;
+      var left = goal - (cycleVisit === 0 ? 0 : cycleVisit);
+      if (cycleVisit === 0) left = 0;
+      
+      var finalMessage = "⚡️ <b>Zeus Auto пишет:</b>\n\n" + text + 
+                         "\n\n---\n📊 Мойка №" + v + ". До бонуса: " + (left === 0 ? "уже пора забирать!" : left + " виз.");
+      
+      var payload = {
+        "chat_id": cid,
+        "text": finalMessage,
+        "parse_mode": "HTML"
+      };
+      
+      requests.push({
+        url: "https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage",
+        method: "post",
+        contentType: "application/json",
+        payload: JSON.stringify(payload)
+      });
+    }
+  }
+  
+  var successCount = 0;
+  var batchSize = 30; // отправляем по 30 сообщений за раз
+  
+  for (var j = 0; j < requests.length; j += batchSize) {
+    var batch = requests.slice(j, j + batchSize);
+    try {
+      UrlFetchApp.fetchAll(batch);
+      successCount += batch.length;
+    } catch (e) {
+      console.error("Batch failed: " + e);
+    }
+    Utilities.sleep(2000); // пауза между пачками
+  }
+  
+  return "Отправлено " + successCount + " из " + requests.length + " пользователям.";
+}
