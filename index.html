@@ -41,9 +41,12 @@
 
     <script>
         (function() {
-            // --------------------------------------------------------------
-            // 1. Инициализация
-            // --------------------------------------------------------------
+            // Безопасная проверка наличия Telegram API
+            if (!window.Telegram || !window.Telegram.WebApp) {
+                document.body.innerHTML = '<div style="color:white; text-align:center; margin-top:50px; font-family:sans-serif;">Пожалуйста, откройте эту страницу через Telegram бота.</div>';
+                return;
+            }
+
             const tg = window.Telegram.WebApp;
             tg.expand();
 
@@ -51,7 +54,6 @@
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwf7b095WKuNxMlWyYpZVUCwF095NabSI9Fn95I-UZdr-FBpWAwJue6e6TI7m3ZvtiJAw/exec";
             const ADMIN_PASS = "My_Secret_123";
 
-            // Получаем ID пользователя Telegram
             let userId = "";
             try {
                 userId = String(tg.initDataUnsafe?.user?.id || "");
@@ -59,7 +61,6 @@
                 console.error("Ошибка получения userId:", e);
             }
 
-            // Если ID нет — останавливаемся
             if (!userId) {
                 document.getElementById("qrcode").innerHTML = '<div style="color:white;">Ошибка: нет ID</div>';
                 return;
@@ -70,9 +71,6 @@
             const scanButton = document.getElementById("adm");
             const visitsElement = document.getElementById("v");
 
-            // --------------------------------------------------------------
-            // 2. Загрузка визитов (для всех)
-            // --------------------------------------------------------------
             function loadVisits() {
                 fetch(`${SCRIPT_URL}?action=check&id=${userId}`)
                     .then(r => r.json())
@@ -81,12 +79,7 @@
             }
             loadVisits();
 
-            // --------------------------------------------------------------
-            // 3. Разделение: АДМИН vs КЛИЕНТ
-            // --------------------------------------------------------------
             if (isAdmin) {
-                // === АДМИН ===
-                // Вместо QR показываем текст
                 qrContainer.innerHTML = '<div class="admin-message">👑 Режим<br>администратора</div>';
                 scanButton.style.display = "block";
                 scanButton.onclick = function() {
@@ -99,16 +92,15 @@
                             .then(res => res.text())
                             .then(msg => {
                                 tg.showAlert(msg);
-                                loadVisits(); // обновим счётчик админа
+                                loadVisits();
                             })
                             .catch(err => {
                                 tg.showAlert("❌ Ошибка сети");
                             });
-                        return true; // закрыть сканер
+                        return true;
                     });
                 };
             } else {
-                // === КЛИЕНТ ===
                 scanButton.style.display = "none";
                 const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
                 try {
