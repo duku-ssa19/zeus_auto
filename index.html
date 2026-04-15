@@ -79,6 +79,15 @@
             }
             loadVisits();
 
+            // Функция для показа информации о баллах
+            function showBonusInfo() {
+                tg.showPopup({
+                    title: 'Система лояльности Zeus Auto',
+                    message: 'За каждую мойку вы получаете 1 визит на вашу карту. \n\nКаждая 4-я мойка — со скидкой 20%!\nКаждая 8-я мойка — в подарок!\n\nЧем чаще вы моете авто, тем больше бонусов получаете.',
+                    buttons: [{type: 'ok'}]
+                });
+            }
+
             if (isAdmin) {
                 qrContainer.innerHTML = '<div class="admin-message">👑 Режим<br>администратора</div>';
                 scanButton.style.display = "block";
@@ -101,6 +110,7 @@
                     });
                 };
             } else {
+                // === КЛИЕНТ ===
                 scanButton.style.display = "none";
                 const qrData = `${SCRIPT_URL}?action=add&id=${userId}&pass=${ADMIN_PASS}`;
                 try {
@@ -117,6 +127,12 @@
                     console.error(e);
                     qrContainer.innerHTML = '<div style="color:white;">Ошибка QR</div>';
                 }
+
+                // === Настройка MainButton для клиента ===
+                const mainButton = tg.MainButton;
+                mainButton.setText("ℹ️ Что такое баллы?");
+                mainButton.show();
+                mainButton.onClick(showBonusInfo);
             }
         })();
     </script>
